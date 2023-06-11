@@ -93,6 +93,36 @@ class MainWindow:
         # quit()  # quit() does not work with pyinstaller, use sys.exit()
         sys.exit()
 
+    def choose_folder(self):
+        self.user_entry.folder_path = filedialog.askdirectory(initialdir=FOLDER_PATH)
+        self.update_entry_files_location(os.path.normcase(self.user_entry.folder_path))
+
+        message = 'Files Location: ' + os.path.normcase(self.user_entry.folder_path) + '\n'
+        colour = "blue"
+        self.session_log.write_textbox(message, colour)
+
+    def open_folder(self):
+        temp_path = os.path.realpath(self.user_entry.folder_path)
+        try:
+            os.startfile(temp_path)
+        except:
+            self.user_entry.file_location = FOLDER_PATH
+
+    def update_entry_files_location(self, string):
+        self.entry_files_location.delete(0, END)
+        self.entry_files_location.insert(0, string)
+
+    def entry_update_files_location(self):
+        file_location = self.entry_files_location_entry.get()
+        if fm.FileNameMethods.check_file_location_valid(file_location):
+            self.user_entry.folder_path = file_location
+        else:
+            self.user_entry.folder_path = FOLDER_PATH
+        message = 'Files Location: ' + os.path.normcase(self.user_entry.folder_path) + '\n'
+        colour = 'blue'
+        self.session_log.write_textbox(message, colour)
+        print("::user_entry.folder_path: ", self.user_entry.folder_path)
+
     def start_process(self):
         self.n_files_to_process = 0
         self.n_files_moved = 0
@@ -215,63 +245,3 @@ class MainWindow:
                 colour = 'red'
                 self.session_log.write_textbox(message, colour)
                 print(message)
-
-    def open_folder(self):
-        temp_path = os.path.realpath(self.user_entry.folder_path)
-        try:
-            os.startfile(temp_path)
-        except:
-            self.user_entry.file_location = FOLDER_PATH
-
-    def choose_folder(self):
-        self.user_entry.folder_path = filedialog.askdirectory(initialdir=FOLDER_PATH)
-        self.update_entry_files_location(os.path.normcase(self.user_entry.folder_path))
-
-        message = 'Files Location: ' + os.path.normcase(self.user_entry.folder_path) + '\n'
-        colour = "blue"
-        self.session_log.write_textbox(message, colour)
-
-    def update_entry_files_location(self, string):
-        self.entry_files_location.delete(0, END)
-        self.entry_files_location.insert(0, string)
-
-    def undo_move_files_to_folders(self, filenames, destination_folder):
-        # Check if the destination folder exists
-        if not os.path.exists(destination_folder):
-            print("Destination folder does not exist.")
-            return
-
-        for filename in filenames:
-            # Create a folder using the filename in the destination folder
-            folder_name = os.path.splitext(filename)[0]
-            folder_path = os.path.join(destination_folder, folder_name)
-
-            # Check if the folder exists
-            if os.path.exists(folder_path):
-                # Move the file back to the original location
-                new_file_path = os.path.join(destination_folder, filename)
-                file_path = os.path.join(folder_path, filename)
-                try:
-                    shutil.move(file_path, new_file_path)
-                    print(f"File moved back to: {new_file_path}")
-                except FileNotFoundError:
-                    print(f"File not found: {file_path}")
-                # Remove the empty folder
-                try:
-                    os.rmdir(folder_path)
-                    print(f"Folder removed: {folder_path}")
-                except OSError:
-                    print(f"Failed to remove folder: {folder_path}")
-            else:
-                print(f"Folder not found: {folder_path}")
-
-    def entry_update_files_location(self):
-        file_location = self.entry_files_location_entry.get()
-        if fm.FileNameMethods.check_file_location_valid(file_location):
-            self.user_entry.folder_path = file_location
-        else:
-            self.user_entry.folder_path = FOLDER_PATH
-        message = 'Files Location: ' + os.path.normcase(self.user_entry.folder_path) + '\n'
-        colour = 'blue'
-        self.session_log.write_textbox(message, colour)
-        print("::user_entry.folder_path: ", self.user_entry.folder_path)
