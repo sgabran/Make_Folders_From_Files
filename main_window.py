@@ -2,7 +2,6 @@ import os
 import os.path
 from idlelib.tooltip import *
 from tkinter import filedialog
-from tkinter import messagebox
 
 import sys
 import shutil
@@ -25,7 +24,8 @@ class MainWindow:
         self.user_entry = UserEntry()
         self.session_log = SessionLog(self.user_entry)
 
-        self.files = NONE
+        self.files_to_process = NONE
+        self.n_files_to_process = 0
 
         # GUI Frames
         self.frame_root_title = Frame(root, highlightthickness=0)
@@ -53,15 +53,18 @@ class MainWindow:
         self.entry_files_location.insert(END, os.path.normcase(FOLDER_PATH))
 
         # Buttons
-        self.button_files_location = Button(self.frame_root_session, text="Files Location", command=lambda: self.open_folder(), pady=0, width=10, fg='brown')
+        self.button_files_location = Button(self.frame_root_session, text="Files Location", command=lambda: self.choose_folder(), pady=0, width=10, fg='brown')
         self.button_start = Button(self.frame_root_session, text="Start", fg='green', command=self.start_process, pady=0, width=10)
         self.button_exit = Button(self.frame_root_session, text="Exit", fg='red', command=self.quit_program, pady=0, width=10)
-
+        self.button_open_folder = Button(self.frame_root_session, text="Open Folder",
+                                         command=lambda: self.open_folder(),
+                                         pady=0, width=10)
         # Grids
-        self.entry_files_location.grid       (row=1, column=1, sticky=W)
+        self.entry_files_location.grid      (row=1, column=1, sticky=W, padx=(5, 0))
         self.button_files_location.grid     (row=1, column=0, sticky=NE)
         self.button_start.grid              (row=2, column=0, sticky=NE)
-        self.button_exit.grid               (row=2, column=1, sticky=NW)
+        self.button_open_folder.grid        (row=2, column=1, sticky=NW)
+        self.button_exit.grid               (row=2, column=1, sticky=NW, padx=(80, 0))
 
         # END OF FRAME #######################################################
 
@@ -93,19 +96,37 @@ class MainWindow:
 
     def start_process(self):
         self.scan_files_in_folder(self.user_entry.folder_path)
-        self.create_folders_and_move_files(self.files, self.user_entry.folder_path)
+        self.create_folders_and_move_files(self.files_to_process, self.user_entry.folder_path)
 
     def scan_files_in_folder(self, folder_path):
         # Check if folder path exists
         if os.path.exists(folder_path):
             # Get a list of files in the folder
-            self.files = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
+            self.files_to_process = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
+            self.n_files_to_process = len(self.files_to_process)
+
+            message = "Number of Files to Process: " + str(self.n_files_to_process) + '\n'
+            colour = 'blue'
+            self.session_log.write_textbox(message, colour)
+
+            message = 'Files List:' + '\n'
+            colour = 'black'
+            self.session_log.write_textbox(message, colour)
+
             print("Files in folder:")
-            for file in self.files:
+            for file in self.files_to_process:
                 print(file)
-            return self.files
+                message = '\t' + str(file) + '\n'
+                colour = 'black'
+                self.session_log.write_textbox(message, colour)
+            return self.files_to_process
+
         else:
+            message = "Folder path does not exist" + '\n' + "Process will terminate" + '\n'
+            colour = 'red'
+            self.session_log.write_textbox(message, colour)
             print("Folder path does not exist.")
+            return
 
     def create_folders_and_move_files(self, filenames, destination_folder):
         # Check if the destination folder exists
@@ -136,59 +157,21 @@ class MainWindow:
             except shutil.Error:
                 print(f"File already exists in the folder: {filename}")
 
-    ######################################################################
-
-    ######################################################################
     def open_folder(self):
-        self.user_entry.folder_path = filedialog.askdirectory(initialdir=FOLDER_PATH)
-        if self.user_entry.folder_path:
-            # Open the folder in the default file explorer
-            os.startfile(self.user_entry.folder_path)
-            print("Folder opened successfully!")
-        else:
-            print("No folder selected.")
-
-        # temp_path = os.path.realpath(folder_path)
-        # try:
-        #     os.startfile(temp_path)
-        # except:
-        #     try:
-        #         os.mkdir(FILES_LOCATION)
-        #         self.user_entry.files_location = FILES_LOCATION
-        #         self.session_log.write_textbox("Folder Created", "blue")
-        #         print("Folder Created")
-        #     except OSError as e:
-        #         print("Failed to Create Folder")
-        #         e = Exception("Failed to Create Folder")
-        #         self.session_log.write_textbox(str(e), "red")
-        #         raise e
-
-    ######################################################################
-
-    @staticmethod
-    def message_box(title, data):
+        temp_path = os.path.realpath(self.user_entry.folder_path)
         try:
-            messagebox.showinfo(title=title, message=data)
+            os.startfile(temp_path)
         except:
-            data = 'Invalid data'
+            self.user_entry.file_location = FOLDER_PATH
 
-    def display_session_settings(self):
-        message = 'File To Process: ' + fm.FileNameMethods.build_file_name_full(
-            self.user_entry.files_location, self.user_entry.file_name, self.user_entry.file_suffix) + '\n'
+    def choose_folder(self):
+        self.user_entry.folder_path = filedialog.askdirectory(initialdir=FOLDER_PATH)
+        self.update_entry_files_location(os.path.normcase(self.user_entry.folder_path))
+
+        message = 'Files Location: ' + os.path.normcase(self.user_entry.folder_path) + '\n'
         colour = "blue"
         self.session_log.write_textbox(message, colour)
 
-        message = 'Extract Timestamp: ' + ('yes' if self.user_entry.timestamp_extract == 1 else 'no') + '\n'
-        self.session_log.write_textbox(message, colour)
-
-        message = ' Header at Row: ' + str(self.user_entry.header_row_index) + '\n'
-        self.session_log.write_textbox(message, colour)
-
-        message = 'Data Start at Row: ' + str(self.user_entry.data_start_row_index) + '\n'
-        self.session_log.write_textbox(message, colour)
-
-        message = 'Data Length Requested: ' + str(self.user_entry.data_length_requested) + '\n'
-        self.session_log.write_textbox(message, colour)
-
-        message = 'Include Header in Plot: ' + str(self.user_entry.header_include_plots) + '\n'
-        self.session_log.write_textbox(message, colour)
+    def update_entry_files_location(self, string):
+        self.entry_files_location.delete(0, END)
+        self.entry_files_location.insert(0, string)
