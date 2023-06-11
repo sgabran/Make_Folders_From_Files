@@ -1,1 +1,2 @@
-FOLDER_PATH = r"C:/"
+# FOLDER_PATH = r"C:/"
+FOLDER_PATH = ""

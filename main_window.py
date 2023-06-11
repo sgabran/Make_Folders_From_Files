@@ -81,14 +81,6 @@ class MainWindow:
         for child in widget.winfo_children():
             self.setState(child, state=state)
 
-    def entry_update_files_location(self):
-        files_location = self.entry_files_location_entry.get()
-        if fm.FileNameMethods.check_file_location_valid(files_location):
-            self.user_entry.files_location = files_location
-        else:
-            self.user_entry.files_location = FOLDER_PATH
-        print("::user_entry.files_location: ", self.user_entry.files_location)
-
     @staticmethod
     def quit_program():
         # quit()  # quit() does not work with pyinstaller, use sys.exit()
@@ -100,7 +92,12 @@ class MainWindow:
 
     def scan_files_in_folder(self, folder_path):
         # Check if folder path exists
-        if os.path.exists(folder_path):
+        # if os.path.exists(folder_path):
+        try:
+            message = "Scanning Folder" + '\n'
+            colour = "black"
+            self.session_log.write_textbox(message, colour)
+
             # Get a list of files in the folder
             self.files_to_process = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
             self.n_files_to_process = len(self.files_to_process)
@@ -121,20 +118,25 @@ class MainWindow:
                 self.session_log.write_textbox(message, colour)
             return self.files_to_process
 
-        else:
-            message = "Folder path does not exist" + '\n' + "Process will terminate" + '\n'
+        # else:
+        except:
+            message = "Folder path does not exist .. Process will terminate" + '\n'
             colour = 'red'
             self.session_log.write_textbox(message, colour)
-            print("Folder path does not exist.")
-            return
+            print(message)
+            raise SystemExit
 
-    def create_folders_and_move_files(self, filenames, destination_folder):
+    def create_folders_and_move_files(self, filenames_list, destination_folder):
+
         # Check if the destination folder exists
         if not os.path.exists(destination_folder):
-            print("Destination folder does not exist.")
+            message = "Destination folder does not exist" + '\n'
+            colour = "red"
+            self.session_log.write_textbox(message, colour)
+            print(message)
             return
 
-        for filename in filenames:
+        for filename in filenames_list:
             # Create a folder using the filename in the destination folder
             folder_name = os.path.splitext(filename)[0]
             folder_path = os.path.join(destination_folder, folder_name)
@@ -175,3 +177,44 @@ class MainWindow:
     def update_entry_files_location(self, string):
         self.entry_files_location.delete(0, END)
         self.entry_files_location.insert(0, string)
+
+    def undo_move_files_to_folders(self, filenames, destination_folder):
+        # Check if the destination folder exists
+        if not os.path.exists(destination_folder):
+            print("Destination folder does not exist.")
+            return
+
+        for filename in filenames:
+            # Create a folder using the filename in the destination folder
+            folder_name = os.path.splitext(filename)[0]
+            folder_path = os.path.join(destination_folder, folder_name)
+
+            # Check if the folder exists
+            if os.path.exists(folder_path):
+                # Move the file back to the original location
+                new_file_path = os.path.join(destination_folder, filename)
+                file_path = os.path.join(folder_path, filename)
+                try:
+                    shutil.move(file_path, new_file_path)
+                    print(f"File moved back to: {new_file_path}")
+                except FileNotFoundError:
+                    print(f"File not found: {file_path}")
+                # Remove the empty folder
+                try:
+                    os.rmdir(folder_path)
+                    print(f"Folder removed: {folder_path}")
+                except OSError:
+                    print(f"Failed to remove folder: {folder_path}")
+            else:
+                print(f"Folder not found: {folder_path}")
+
+    def entry_update_files_location(self):
+        file_location = self.entry_files_location_entry.get()
+        if fm.FileNameMethods.check_file_location_valid(file_location):
+            self.user_entry.folder_path = file_location
+        else:
+            self.user_entry.folder_path = FOLDER_PATH
+        message = 'Files Location: ' + os.path.normcase(self.user_entry.folder_path) + '\n'
+        colour = 'blue'
+        self.session_log.write_textbox(message, colour)
+        print("::user_entry.folder_path: ", self.user_entry.folder_path)
