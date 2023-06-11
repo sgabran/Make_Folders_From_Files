@@ -2,6 +2,7 @@ import os
 import os.path
 from idlelib.tooltip import *
 from tkinter import filedialog
+from tkinter import messagebox
 
 import sys
 import shutil
@@ -217,10 +218,11 @@ class MainWindow:
                 print(message)
 
     def open_folder(self):
-        temp_path = os.path.realpath(self.user_entry.folder_path)
-        try:
-            os.startfile(temp_path)
-        except:
+        folder_path = self.user_entry.folder_path
+        if os.path.exists(folder_path) and os.path.isdir(folder_path):
+            os.startfile(self.user_entry.folder_path)
+        else:
+            messagebox.showinfo(title="Error", message="Folder Does Not Exist")
             self.user_entry.file_location = FOLDER_PATH
 
     def choose_folder(self):
