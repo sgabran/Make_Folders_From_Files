@@ -1,2 +1,6 @@
 # FOLDER_PATH = r"C:/"
 FOLDER_PATH = ""
+BAD_FOLDER_ERROR_1 = "Missing Folder"
+BAD_FOLDER_ERROR_2 = "No Contents"
+BAD_FOLDER_ERROR_3 = "Many Contents"
+BAD_FOLDER_ERROR_4 = "Filename Doesn't Match Folder Name"

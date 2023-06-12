@@ -26,12 +26,15 @@ class MainWindow:
         self.session_log = SessionLog(self.user_entry)
 
         self.files_to_process = []
-        self.files_moved_fullpath  = []
+        self.files_moved_fullpath = []
         self.folders_created_fullpath = []
-        self.bad_undo_folder = []
+        self.bad_undo_folder = {}
         self.n_files_to_process = 0
-        self.n_files_moved_fullpath  = 0
+        self.n_files_moved_fullpath = 0
         self.n_folders_created_fullpath = 0
+        self.n_restored_files = 0
+        self.n_deleted_folders = 0
+        self.finished_with_errors = 1
 
         # GUI Frames
         self.frame_root_title = Frame(root, highlightthickness=0)
@@ -43,11 +46,6 @@ class MainWindow:
         # Grids
         self.frame_root_title.grid(row=0, column=0, padx=10, pady=5, ipadx=5, ipady=5)
         self.frame_root_session.grid(row=1, column=0, sticky="W", padx=10, pady=(5, 5), ipadx=5, ipady=2)
-
-        entry_validation_positive_numbers = root.register(mm.only_positive_numbers)
-        entry_validation_numbers = root.register(mm.only_digits)
-        entry_validation_numbers_space = root.register(mm.digits_or_space)
-        entry_validation_positive_numbers_comma = root.register(mm.positive_numbers_or_comma)
 
         ######################################################################
         # Frame Session
@@ -61,11 +59,17 @@ class MainWindow:
         self.entry_files_location.insert(END, os.path.normcase(FOLDER_PATH))
 
         # Buttons
-        self.button_files_location = Button(self.frame_root_session, text="Files Location", command=lambda: self.choose_folder(), pady=0, width=10, fg='brown')
-        self.button_start = Button(self.frame_root_session, text="Start", fg='green', command=self.start_process, pady=0, width=10)
-        self.button_open_folder = Button(self.frame_root_session, text="Open Folder", command=lambda: self.open_folder(), pady=0, width=10)
-        self.button_undo = Button(self.frame_root_session, text="Undo", command=lambda: self.undo_move_files_to_folders(self.files_moved_fullpath, self.folders_created_fullpath), pady=0, width=10)
-        self.button_exit = Button(self.frame_root_session, text="Exit", fg='red', command=self.quit_program, pady=0, width=10)
+        self.button_files_location = Button(self.frame_root_session, text="Files Location",
+                                            command=lambda: self.choose_folder(), pady=0, width=10, fg='brown')
+        self.button_start = Button(self.frame_root_session, text="Start", fg='green', command=self.start_process,
+                                   pady=0, width=10)
+        self.button_open_folder = Button(self.frame_root_session, text="Open Folder",
+                                         command=lambda: self.open_folder(), pady=0, width=10)
+        self.button_undo = Button(self.frame_root_session, text="Undo",
+                                  command=lambda: self.undo_move_files_to_folders(self.folders_created_fullpath),
+                                  pady=0, width=10)
+        self.button_exit = Button(self.frame_root_session, text="Exit", fg='red', command=self.quit_program, pady=0,
+                                  width=10)
 
         # Grids
         self.entry_files_location.grid(row=1, column=1, sticky=W, padx=(5, 0))
@@ -81,14 +85,14 @@ class MainWindow:
 
     ######################################################################
 
-    def setState(self, widget, state):
+    def set_state(self, widget, state):
         print(type(widget))
         try:
             widget.configure(state=state)
         except:
             pass
         for child in widget.winfo_children():
-            self.setState(child, state=state)
+            self.set_state(child, state=state)
 
     @staticmethod
     def quit_program():
@@ -96,15 +100,12 @@ class MainWindow:
         sys.exit()
 
     def start_process(self):
-    #     self.n_files_to_process = 0
-    #     self.n_files_moved_fullpath  = 0
-    #     self.n_folders_created_fullpath = 0
         self.files_to_process = []
-        self.files_moved_fullpath  = []
+        self.files_moved_fullpath = []
         self.folders_created_fullpath = []
-        self.bad_undo_folder = []
+        self.bad_undo_folder = {}
 
-    # Scan Folder
+        # Scan Folder
         result = self.scan_files_in_folder(self.user_entry.folder_path)
 
         # No Files
@@ -126,11 +127,14 @@ class MainWindow:
         else:
             self.create_folders_and_move_files(self.files_to_process, self.user_entry.folder_path)
 
-            if self.n_files_to_process == self.n_folders_created_fullpath == self.n_files_moved_fullpath :
+            if self.n_files_to_process == self.n_folders_created_fullpath == self.n_files_moved_fullpath:
                 message = "Number of Folders Created: " + str(self.n_folders_created_fullpath) + '\n'
                 colour = 'green'
                 self.session_log.write_textbox(message, colour)
-                message = "Number of Files Moved: " + str(self.n_files_moved_fullpath ) + '\n'
+                message = "Number of Files Moved: " + str(self.n_files_moved_fullpath) + '\n'
+                colour = 'green'
+                self.session_log.write_textbox(message, colour)
+                message = "Process Finished Successfully" + '\n'
                 colour = 'green'
                 self.session_log.write_textbox(message, colour)
             else:
@@ -140,7 +144,10 @@ class MainWindow:
                 message = "Number of Folders Created: " + str(self.n_folders_created_fullpath) + '\n'
                 colour = 'red'
                 self.session_log.write_textbox(message, colour)
-                message = "Number of Files Moved: " + str(self.n_files_moved_fullpath ) + '\n'
+                message = "Number of Files Moved: " + str(self.n_files_moved_fullpath) + '\n'
+                colour = 'red'
+                self.session_log.write_textbox(message, colour)
+                message = "Process Finished with Errors" + '\n'
                 colour = 'red'
                 self.session_log.write_textbox(message, colour)
 
@@ -203,7 +210,7 @@ class MainWindow:
 
                 if not os.path.isfile(new_file_path):
                     shutil.move(file_path, new_file_path)
-                    self.files_moved_fullpath .append(new_file_path)
+                    self.files_moved_fullpath.append(new_file_path)
                     message = str(filename) + "  >>>  " + str(os.path.dirname(new_file_path)) + '\n'
                     colour = 'black'
                     self.session_log.write_textbox(message, colour)
@@ -216,7 +223,7 @@ class MainWindow:
                     print(message)
 
                 self.n_folders_created_fullpath = len(self.folders_created_fullpath)
-                self.n_files_moved_fullpath  = len(self.files_moved_fullpath )
+                self.n_files_moved_fullpath = len(self.files_moved_fullpath)
 
             except FileNotFoundError:
                 message = f"File not found: {filename}" + '\n'
@@ -245,9 +252,12 @@ class MainWindow:
         self.entry_files_location.delete(0, END)
         self.entry_files_location.insert(0, string)
 
-    def undo_move_files_to_folders(self, files_fullpath, folders_fullpath):
+    def undo_move_files_to_folders(self, folders_fullpath):
 
-        self.bad_undo_folder = []
+        self.bad_undo_folder = {}
+        self.n_restored_files = 0
+        self.n_deleted_folders = 0
+        self.finished_with_errors = 1
 
         # check if changes were done
         if self.n_folders_created_fullpath == self.n_files_moved_fullpath == 0:
@@ -270,15 +280,21 @@ class MainWindow:
                 # 2. Check number of folder contents: must equal to 1.
                 # "folder_contents" is filename with extension
                 folder_contents = os.listdir(folder_fullpath)
-                if len(folder_contents) != 1:
-                    self.bad_undo_folder.append(folder_fullpath)
+                if len(folder_contents) == 0:
+                    # self.bad_undo_folder.append(folder_fullpath)
+                    self.bad_undo_folder[folder_fullpath] = BAD_FOLDER_ERROR_2
+
+                elif len(folder_contents) > 1:
+                    # self.bad_undo_folder.append(folder_fullpath)
+                    self.bad_undo_folder[folder_fullpath] = BAD_FOLDER_ERROR_3
 
                 else:
                     # 3. Check folder contents: file must have same folder name
                     folder_name = os.path.basename(folder_fullpath)
                     filename_without_extension = os.path.splitext(os.path.basename(folder_contents[0]))[0]
                     if folder_name != filename_without_extension:
-                        self.bad_undo_folder.append(folder_fullpath)
+                        # self.bad_undo_folder.append(folder_fullpath)
+                        self.bad_undo_folder[folder_fullpath] = BAD_FOLDER_ERROR_4
 
                     else:
                         filename = os.path.basename(folder_contents[0])
@@ -289,15 +305,19 @@ class MainWindow:
                         message = "Moved: " + filename_original_path + " >> to >> " + file_destination_path + '\n'
                         colour = 'black'
                         self.session_log.write_textbox(message, colour)
+                        self.n_restored_files += 1
                         # Delete folder
                         shutil.rmtree(folder_fullpath)
+                        self.n_deleted_folders += 1
                         message = "Folder Deleted" + '\n'
                         colour = 'black'
                         self.session_log.write_textbox(message, colour)
 
             else:
-                self.bad_undo_folder.append(folder_fullpath)
+                # self.bad_undo_folder.append(folder_fullpath)
+                self.bad_undo_folder[folder_fullpath] = BAD_FOLDER_ERROR_1
 
+        # List bad folders
         if len(self.bad_undo_folder) > 0:
             message = "Errors Found in Some Folders. Bad Folders are Ignored" + '\n'
             colour = 'red'
@@ -306,14 +326,33 @@ class MainWindow:
             colour = 'red'
             self.session_log.write_textbox(message, colour)
 
-            for bad_folder in self.bad_undo_folder:
-                message = '\t' + bad_folder + '\n'
+            for folder, error in self.bad_undo_folder.items():
+                message = '\t' + folder + " >> " + error + '\n'
                 colour = 'red'
                 self.session_log.write_textbox(message, colour)
 
             message = "Errors Found in Some Folders" + '\n' + "Bad Folders are Ignored" + '\n'
             messagebox.showinfo(title="Error", message=message)
-            return
+
+        else:
+            self.finished_with_errors = 0
+
+        message = "Number of Files Restored: " + str(self.n_restored_files) + '\n'
+        colour = 'black'
+        self.session_log.write_textbox(message, colour)
+        message = "Number of Folder Deleted: " + str(self.n_deleted_folders) + '\n'
+        colour = 'black'
+        self.session_log.write_textbox(message, colour)
+
+        if not self.finished_with_errors:
+            message = "Process Finished Successfully" + '\n'
+            colour = 'green'
+            self.session_log.write_textbox(message, colour)
+
+        else:
+            message = "Process Finished with Errors" + '\n'
+            colour = 'red'
+            self.session_log.write_textbox(message, colour)
 
     def entry_update_files_location(self):
         file_location = self.entry_files_location_entry.get()
